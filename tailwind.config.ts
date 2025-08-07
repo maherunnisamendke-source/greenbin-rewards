@@ -52,6 +52,14 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				eco: {
+					DEFAULT: 'hsl(var(--eco-primary))',
+					secondary: 'hsl(var(--eco-secondary))',
+					light: 'hsl(var(--eco-light))',
+					dark: 'hsl(var(--eco-dark))'
+				},
+				earth: 'hsl(var(--earth-brown))',
+				sky: 'hsl(var(--sky-blue))',
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
@@ -88,7 +96,19 @@ export default {
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'bounce-gentle': 'bounce 2s infinite',
+				'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+				'float': 'float 6s ease-in-out infinite'
+			},
+			backgroundImage: {
+				'gradient-eco': 'var(--gradient-eco)',
+				'gradient-earth': 'var(--gradient-earth)',
+				'gradient-reward': 'var(--gradient-reward)'
+			},
+			boxShadow: {
+				'eco': 'var(--shadow-eco)',
+				'glow': 'var(--shadow-glow)'
 			}
 		}
 	},
