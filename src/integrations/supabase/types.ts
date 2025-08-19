@@ -14,7 +14,113 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bins: {
+        Row: {
+          bin_id: string
+          created_at: string
+          id: string
+          latitude: number | null
+          location: string
+          longitude: number | null
+          status: string | null
+        }
+        Insert: {
+          bin_id: string
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          location: string
+          longitude?: number | null
+          status?: string | null
+        }
+        Update: {
+          bin_id?: string
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          location?: string
+          longitude?: number | null
+          status?: string | null
+        }
+        Relationships: []
+      }
+      disposals: {
+        Row: {
+          bin_id: string
+          created_at: string
+          id: string
+          points_earned: number | null
+          user_id: string
+          waste_type: string
+          weight: number | null
+        }
+        Insert: {
+          bin_id: string
+          created_at?: string
+          id?: string
+          points_earned?: number | null
+          user_id: string
+          waste_type: string
+          weight?: number | null
+        }
+        Update: {
+          bin_id?: string
+          created_at?: string
+          id?: string
+          points_earned?: number | null
+          user_id?: string
+          waste_type?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disposals_bin_id_fkey"
+            columns: ["bin_id"]
+            isOneToOne: false
+            referencedRelation: "bins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bins_used: number | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          points: number | null
+          total_disposals: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bins_used?: number | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          points?: number | null
+          total_disposals?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bins_used?: number | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          points?: number | null
+          total_disposals?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
