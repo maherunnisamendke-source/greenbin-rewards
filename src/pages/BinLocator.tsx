@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { LeafletMap } from '@/components/LeafletMap';
 
 interface Bin {
   id: string;
@@ -131,24 +132,16 @@ const BinLocator = () => {
         </CardContent>
       </Card>
 
-      {/* Map Placeholder */}
+      {/* Interactive Map */}
       <Card className="border-eco-light/30">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-eco">
             <MapPin className="h-5 w-5" />
-            Map View
+            Interactive Map
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="bg-gradient-earth h-64 rounded-lg flex items-center justify-center">
-            <div className="text-center">
-              <MapPin className="h-12 w-12 text-eco mx-auto mb-4" />
-              <p className="text-muted-foreground text-lg">Interactive Map Coming Soon</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Real-time bin locations will be displayed here
-              </p>
-            </div>
-          </div>
+        <CardContent className="p-4">
+          <LeafletMap bins={filteredBins} />
         </CardContent>
       </Card>
 
