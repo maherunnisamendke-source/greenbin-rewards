@@ -54,6 +54,30 @@ const SimpleMap = ({ bins, onBinSelect, userLocation, onLocationRequest, locatio
     }
   };
 
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371; // Radius of the Earth in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // Distance in kilometers
+  };
+
+  const getNearbyBins = () => {
+    if (!userLocation) return bins.slice(0, 5);
+    
+    return bins
+      .map(bin => ({
+        ...bin,
+        distance: calculateDistance(userLocation.latitude, userLocation.longitude, bin.latitude, bin.longitude)
+      }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 5);
+  };
+
   const openDirections = (bin: Bin) => {
     const url = `https://www.google.com/maps/dir/?api=1&destination=${bin.latitude},${bin.longitude}`;
     window.open(url, '_blank');
@@ -99,9 +123,11 @@ const SimpleMap = ({ bins, onBinSelect, userLocation, onLocationRequest, locatio
       
       {/* Bin List Overlay */}
       <div className="absolute top-4 left-4 z-10 bg-white p-3 rounded-lg shadow-lg max-w-xs max-h-80 overflow-y-auto">
-        <h4 className="font-semibold text-sm mb-2">Nearby Bins</h4>
+        <h4 className="font-semibold text-sm mb-2">
+          {userLocation ? 'Nearby Bins' : 'Available Bins'}
+        </h4>
         <div className="space-y-2">
-          {bins.slice(0, 5).map((bin) => (
+          {getNearbyBins().map((bin) => (
             <div key={bin.id} className="flex items-center justify-between p-2 bg-gray-50 rounded text-xs">
               <div>
                 <div className="font-medium">{bin.bin_id}</div>
@@ -111,6 +137,11 @@ const SimpleMap = ({ bins, onBinSelect, userLocation, onLocationRequest, locatio
                     {getStatusIcon(bin.status)}
                   </span>
                   <span className="text-xs text-gray-500">{bin.status}</span>
+                  {'distance' in bin && (
+                    <span className="text-xs text-blue-600 ml-1">
+                      {(bin as any).distance.toFixed(1)}km
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex flex-col gap-1">
