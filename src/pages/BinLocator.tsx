@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { LeafletMap } from '@/components/LeafletMap';
+import SimpleMap from '@/components/SimpleMap';
+import VoiceAssistant from '@/components/VoiceAssistant';
 
 interface Bin {
   id: string;
@@ -21,6 +22,8 @@ const BinLocator = () => {
   const [filteredBins, setFilteredBins] = useState<Bin[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
 
   useEffect(() => {
     fetchBins();
@@ -92,6 +95,25 @@ const BinLocator = () => {
     window.open(url, '_blank');
   };
 
+  const handleLocationRequest = () => {
+    if (navigator.geolocation) {
+      setLocationLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          });
+          setLocationLoading(false);
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          setLocationLoading(false);
+        }
+      );
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -141,7 +163,14 @@ const BinLocator = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4">
-          <LeafletMap bins={filteredBins} />
+          <div className="h-96">
+            <SimpleMap 
+              bins={filteredBins} 
+              userLocation={userLocation}
+              onLocationRequest={handleLocationRequest}
+              locationLoading={locationLoading}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -220,6 +249,9 @@ const BinLocator = () => {
           </div>
         )}
       </div>
+
+      {/* Voice Assistant */}
+      <VoiceAssistant />
     </div>
   );
 };
