@@ -1,53 +1,49 @@
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
 import { Button } from '@/components/ui/button';
 import { MapPin, Navigation, Crosshair } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import 'leaflet/dist/leaflet.css';
 
-// Fix for default markers
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+// Dynamic imports to avoid SSR issues
+let MapContainer: any;
+let TileLayer: any;
+let Marker: any;
+let Popup: any;
+let useMap: any;
+let L: any;
 
-// Custom bin icon
-const createBinIcon = (status: string) => {
-  const color = status === 'active' ? '#22c55e' : status === 'full' ? '#ef4444' : '#f59e0b';
-  return L.divIcon({
-    className: 'custom-bin-marker',
-    html: `<div style="
-      background-color: ${color};
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      border: 3px solid white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    "></div>`,
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
-  });
+// Initialize leaflet components
+const initializeLeaflet = async () => {
+  if (typeof window === 'undefined') return false;
+  
+  try {
+    const leaflet = await import('leaflet');
+    const reactLeaflet = await import('react-leaflet');
+    
+    L = leaflet.default;
+    MapContainer = reactLeaflet.MapContainer;
+    TileLayer = reactLeaflet.TileLayer;
+    Marker = reactLeaflet.Marker;
+    Popup = reactLeaflet.Popup;
+    useMap = reactLeaflet.useMap;
+
+    // Import CSS
+    await import('leaflet/dist/leaflet.css');
+    
+    // Fix for default markers
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to initialize Leaflet:', error);
+    return false;
+  }
 };
-
-// User location icon
-const userIcon = L.divIcon({
-  className: 'user-location-marker',
-  html: `<div style="
-    background-color: #3b82f6;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    border: 3px solid white;
-    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
-    animation: pulse 2s infinite;
-  "></div>`,
-  iconSize: [16, 16],
-  iconAnchor: [8, 8],
-});
 
 interface Bin {
   id: string;
@@ -68,33 +64,18 @@ interface LeafletMapProps {
   onBinSelect?: (bin: Bin) => void;
 }
 
-// Component to handle map centering
-function MapController({ userLocation, bins }: { userLocation: UserLocation | null, bins: Bin[] }) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (userLocation && bins.length > 0) {
-      // Calculate bounds to include user location and all bins
-      const bounds = L.latLngBounds([
-        [userLocation.latitude, userLocation.longitude] as [number, number],
-        ...bins.map(bin => [bin.latitude, bin.longitude] as [number, number])
-      ]);
-      map.fitBounds(bounds, { padding: [20, 20] });
-    } else if (userLocation) {
-      map.setView([userLocation.latitude, userLocation.longitude], 15);
-    } else if (bins.length > 0) {
-      const bounds = L.latLngBounds(bins.map(bin => [bin.latitude, bin.longitude] as [number, number]));
-      map.fitBounds(bounds, { padding: [20, 20] });
-    }
-  }, [userLocation, bins, map]);
-
-  return null;
-}
-
 export const LeafletMap = ({ bins, onBinSelect }: LeafletMapProps) => {
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [loading, setLoading] = useState(false);
+  const [leafletLoaded, setLeafletLoaded] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Initialize Leaflet when component mounts
+    initializeLeaflet().then((loaded) => {
+      setLeafletLoaded(loaded);
+    });
+  }, []);
 
   const getUserLocation = () => {
     setLoading(true);
@@ -164,6 +145,81 @@ export const LeafletMap = ({ bins, onBinSelect }: LeafletMapProps) => {
     window.open(url, '_blank');
   };
 
+  // Show loading state while Leaflet is being loaded
+  if (!leafletLoaded) {
+    return (
+      <div className="relative w-full h-96 rounded-lg overflow-hidden border border-eco-light/30 flex items-center justify-center bg-muted/20">
+        <div className="text-center">
+          <div className="animate-pulse">
+            <MapPin className="h-12 w-12 text-eco mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading map...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Component to handle map centering
+  function MapController({ userLocation, bins }: { userLocation: UserLocation | null, bins: Bin[] }) {
+    const map = useMap();
+
+    useEffect(() => {
+      if (userLocation && bins.length > 0) {
+        // Calculate bounds to include user location and all bins
+        const bounds = L.latLngBounds([
+          [userLocation.latitude, userLocation.longitude] as [number, number],
+          ...bins.map(bin => [bin.latitude, bin.longitude] as [number, number])
+        ]);
+        map.fitBounds(bounds, { padding: [20, 20] });
+      } else if (userLocation) {
+        map.setView([userLocation.latitude, userLocation.longitude], 15);
+      } else if (bins.length > 0) {
+        const bounds = L.latLngBounds(bins.map(bin => [bin.latitude, bin.longitude] as [number, number]));
+        map.fitBounds(bounds, { padding: [20, 20] });
+      }
+    }, [userLocation, bins, map]);
+
+    return null;
+  }
+
+  // Custom bin icon function (now defined inside component after L is loaded)
+  const createBinIcon = (status: string) => {
+    if (!L) return undefined;
+    const color = status === 'active' ? '#22c55e' : status === 'full' ? '#ef4444' : '#f59e0b';
+    return L.divIcon({
+      className: 'custom-bin-marker',
+      html: `<div style="
+        background-color: ${color};
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      "></div>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
+    });
+  };
+
+  // User location icon function (now defined inside component after L is loaded)
+  const createUserIcon = () => {
+    if (!L) return undefined;
+    return L.divIcon({
+      className: 'user-location-marker',
+      html: `<div style="
+        background-color: #3b82f6;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        animation: pulse 2s infinite;
+      "></div>`,
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+    });
+  };
+
   // Default center (you can adjust this to your preferred location)
   const defaultCenter: [number, number] = [40.7128, -74.0060]; // New York City
 
@@ -193,7 +249,7 @@ export const LeafletMap = ({ bins, onBinSelect }: LeafletMapProps) => {
         {userLocation && (
           <Marker 
             position={[userLocation.latitude, userLocation.longitude]} 
-            icon={userIcon}
+            icon={createUserIcon()}
           >
             <Popup>
               <div className="text-center">
