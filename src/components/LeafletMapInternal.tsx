@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { Button } from '@/components/ui/button';
 import { MapPin, Navigation, Crosshair } from 'lucide-react';
@@ -72,29 +72,6 @@ const createUserIcon = () => {
   });
 };
 
-// Component to handle map centering
-function MapController({ userLocation, bins }: { userLocation: UserLocation | null, bins: Bin[] }) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (userLocation && bins.length > 0) {
-      // Calculate bounds to include user location and all bins
-      const bounds = L.latLngBounds([
-        [userLocation.latitude, userLocation.longitude] as [number, number],
-        ...bins.map(bin => [bin.latitude, bin.longitude] as [number, number])
-      ]);
-      map.fitBounds(bounds, { padding: [20, 20] });
-    } else if (userLocation) {
-      map.setView([userLocation.latitude, userLocation.longitude], 15);
-    } else if (bins.length > 0) {
-      const bounds = L.latLngBounds(bins.map(bin => [bin.latitude, bin.longitude] as [number, number]));
-      map.fitBounds(bounds, { padding: [20, 20] });
-    }
-  }, [userLocation, bins, map]);
-
-  return null;
-}
-
 const LeafletMapInternal = ({ bins, onBinSelect, userLocation, onLocationRequest, locationLoading }: LeafletMapInternalProps) => {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -127,8 +104,25 @@ const LeafletMapInternal = ({ bins, onBinSelect, userLocation, onLocationRequest
     window.open(url, '_blank');
   };
 
-  // Default center (you can adjust this to your preferred location)
-  const defaultCenter: [number, number] = [40.7128, -74.0060]; // New York City
+  // Calculate map center and zoom based on user location and bins
+  const getMapCenter = (): [number, number] => {
+    if (userLocation) {
+      return [userLocation.latitude, userLocation.longitude];
+    }
+    if (bins.length > 0) {
+      // Calculate center of all bins
+      const avgLat = bins.reduce((sum, bin) => sum + bin.latitude, 0) / bins.length;
+      const avgLng = bins.reduce((sum, bin) => sum + bin.longitude, 0) / bins.length;
+      return [avgLat, avgLng];
+    }
+    return [40.7128, -74.0060]; // Default to NYC
+  };
+
+  const getMapZoom = (): number => {
+    if (userLocation) return 15;
+    if (bins.length > 0) return 12;
+    return 10;
+  };
 
   return (
     <div className="relative w-full h-full">
@@ -140,8 +134,8 @@ const LeafletMapInternal = ({ bins, onBinSelect, userLocation, onLocationRequest
       `}</style>
       
       <MapContainer
-        center={userLocation ? [userLocation.latitude, userLocation.longitude] : defaultCenter}
-        zoom={userLocation ? 15 : 12}
+        center={getMapCenter()}
+        zoom={getMapZoom()}
         style={{ height: '100%', width: '100%' }}
         className="z-0"
       >
@@ -149,8 +143,6 @@ const LeafletMapInternal = ({ bins, onBinSelect, userLocation, onLocationRequest
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        
-        <MapController userLocation={userLocation} bins={bins} />
         
         {/* User location marker */}
         {userLocation && (
