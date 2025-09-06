@@ -67,15 +67,23 @@ const SimpleMap = ({ bins, onBinSelect, userLocation, onLocationRequest, locatio
   };
 
   const getNearbyBins = () => {
-    if (!userLocation) return bins.slice(0, 5);
+    if (!userLocation) return [];
     
     return bins
       .map(bin => ({
         ...bin,
         distance: calculateDistance(userLocation.latitude, userLocation.longitude, bin.latitude, bin.longitude)
       }))
+      .filter(bin => (bin as any).distance <= 2) // Only show bins within 2km
       .sort((a, b) => a.distance - b.distance)
       .slice(0, 5);
+  };
+
+  const getUserLocationText = () => {
+    if (!userLocation) return null;
+    
+    // Simple reverse geocoding approximation
+    return `${userLocation.latitude.toFixed(4)}, ${userLocation.longitude.toFixed(4)}`;
   };
 
   const openDirections = (bin: Bin) => {
@@ -126,6 +134,17 @@ const SimpleMap = ({ bins, onBinSelect, userLocation, onLocationRequest, locatio
         <h4 className="font-semibold text-sm mb-2">
           {userLocation ? 'Nearby Bins' : 'Available Bins'}
         </h4>
+        {userLocation && (
+          <div className="mb-3 p-2 bg-blue-50 rounded text-xs">
+            <div className="font-medium text-blue-700">Your Location:</div>
+            <div className="text-blue-600">{getUserLocationText()}</div>
+          </div>
+        )}
+        {userLocation && getNearbyBins().length === 0 && (
+          <div className="text-center text-gray-500 text-xs py-4">
+            No bins found within 2km of your location
+          </div>
+        )}
         <div className="space-y-2">
           {getNearbyBins().map((bin) => (
             <div key={bin.id} className="flex items-center justify-between p-2 bg-gray-50 rounded text-xs">
