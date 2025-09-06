@@ -158,8 +158,11 @@ const BinLocator = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-eco">
             <MapPin className="h-5 w-5" />
-            Interactive Map
+            Find Smart Bins
           </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Locate the nearest smart bins and check their availability in real-time
+          </p>
         </CardHeader>
         <CardContent className="p-4">
           <div className="h-96">
@@ -177,7 +180,7 @@ const BinLocator = () => {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-eco">
-            Nearby Bins ({filteredBins.length} found)
+            {userLocation ? 'Nearby Bins' : 'Available Bins'} ({filteredBins.length} found)
           </h2>
           <div className="flex gap-2 text-sm">
             <span>🟢 Available</span>
@@ -191,13 +194,24 @@ const BinLocator = () => {
             <CardContent className="p-8 text-center">
               <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">
-                {searchTerm ? 'No bins found matching your search.' : 'No bins available at the moment.'}
+                {searchTerm ? 'No bins found matching your search.' : userLocation ? 'No bins found in your area.' : 'Share your location to see nearby bins.'}
               </p>
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-4">
-            {filteredBins.map((bin) => (
+            {(userLocation 
+              ? filteredBins
+                  .map(bin => ({
+                    ...bin,
+                    distance: Math.sqrt(
+                      Math.pow(bin.latitude - userLocation.latitude, 2) + 
+                      Math.pow(bin.longitude - userLocation.longitude, 2)
+                    ) * 111 // Rough conversion to km
+                  }))
+                  .sort((a, b) => a.distance - b.distance)
+              : filteredBins
+            ).map((bin) => (
               <Card key={bin.id} className="border-eco-light/30 hover:shadow-eco transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
@@ -210,6 +224,11 @@ const BinLocator = () => {
                             <MapPin className="h-3 w-3" />
                             {bin.location}
                           </p>
+                          {userLocation && 'distance' in bin && (
+                            <p className="text-xs text-blue-600">
+                              ~{(bin as any).distance.toFixed(1)} km away
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

@@ -74,9 +74,7 @@ const SimpleMap = ({ bins, onBinSelect, userLocation, onLocationRequest, locatio
         ...bin,
         distance: calculateDistance(userLocation.latitude, userLocation.longitude, bin.latitude, bin.longitude)
       }))
-      .filter(bin => (bin as any).distance <= 2) // Only show bins within 2km
-      .sort((a, b) => a.distance - b.distance)
-      .slice(0, 5);
+      .sort((a, b) => a.distance - b.distance); // Show all nearby bins, sorted by distance
   };
 
   const [locationText, setLocationText] = useState<string>('');
@@ -165,7 +163,7 @@ const SimpleMap = ({ bins, onBinSelect, userLocation, onLocationRequest, locatio
         )}
         {userLocation && getNearbyBins().length === 0 && (
           <div className="text-center text-gray-500 text-xs py-4">
-            No bins found within 2km of your location
+            No bins found in your area
           </div>
         )}
         <div className="space-y-2">
