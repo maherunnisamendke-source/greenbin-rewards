@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { MapPin, Navigation, Crosshair } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -79,12 +79,35 @@ const SimpleMap = ({ bins, onBinSelect, userLocation, onLocationRequest, locatio
       .slice(0, 5);
   };
 
-  const getUserLocationText = () => {
+  const [locationText, setLocationText] = useState<string>('');
+
+  const getUserLocationText = async () => {
     if (!userLocation) return null;
     
-    // Simple reverse geocoding approximation
-    return `${userLocation.latitude.toFixed(4)}, ${userLocation.longitude.toFixed(4)}`;
+    try {
+      // Use a free reverse geocoding service
+      const response = await fetch(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${userLocation.latitude}&longitude=${userLocation.longitude}&localityLanguage=en`
+      );
+      const data = await response.json();
+      
+      const address = [
+        data.locality || data.city,
+        data.principalSubdivision,
+        data.countryName
+      ].filter(Boolean).join(', ');
+      
+      setLocationText(address || `${userLocation.latitude.toFixed(4)}, ${userLocation.longitude.toFixed(4)}`);
+    } catch (error) {
+      setLocationText(`${userLocation.latitude.toFixed(4)}, ${userLocation.longitude.toFixed(4)}`);
+    }
   };
+
+  useEffect(() => {
+    if (userLocation) {
+      getUserLocationText();
+    }
+  }, [userLocation]);
 
   const openDirections = (bin: Bin) => {
     const url = `https://www.google.com/maps/dir/?api=1&destination=${bin.latitude},${bin.longitude}`;
@@ -137,7 +160,7 @@ const SimpleMap = ({ bins, onBinSelect, userLocation, onLocationRequest, locatio
         {userLocation && (
           <div className="mb-3 p-2 bg-blue-50 rounded text-xs">
             <div className="font-medium text-blue-700">Your Location:</div>
-            <div className="text-blue-600">{getUserLocationText()}</div>
+            <div className="text-blue-600">{locationText}</div>
           </div>
         )}
         {userLocation && getNearbyBins().length === 0 && (

@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import SimpleMap from '@/components/SimpleMap';
-import VoiceAssistant from '@/components/VoiceAssistant';
 
 interface Bin {
   id: string;
@@ -249,9 +248,6 @@ const BinLocator = () => {
           </div>
         )}
       </div>
-
-      {/* Voice Assistant */}
-      <VoiceAssistant />
     </div>
   );
 };

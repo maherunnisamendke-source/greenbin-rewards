@@ -25,6 +25,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import VoiceAssistant from '@/components/VoiceAssistant';
 
 
 const AppLayout = () => {
@@ -189,6 +190,8 @@ const AppLayout = () => {
         </main>
       </div>
 
+      {/* Voice Assistant - Available on all pages */}
+      <VoiceAssistant />
     </div>
   );
 };
