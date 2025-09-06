@@ -153,7 +153,7 @@ const SimpleMap = ({ bins, onBinSelect, userLocation, onLocationRequest, locatio
       {/* Bin List Overlay */}
       <div className="absolute top-4 left-4 z-10 bg-white p-3 rounded-lg shadow-lg max-w-xs max-h-80 overflow-y-auto">
         <h4 className="font-semibold text-sm mb-2">
-          {userLocation ? 'Nearby Bins' : 'Available Bins'}
+          {userLocation ? 'Nearby Smart Bins' : 'Available Smart Bins'}
         </h4>
         {userLocation && (
           <div className="mb-3 p-2 bg-blue-50 rounded text-xs">
@@ -163,7 +163,7 @@ const SimpleMap = ({ bins, onBinSelect, userLocation, onLocationRequest, locatio
         )}
         {userLocation && getNearbyBins().length === 0 && (
           <div className="text-center text-gray-500 text-xs py-4">
-            No bins found in your area
+            No smart bins found in your area
           </div>
         )}
         <div className="space-y-2">

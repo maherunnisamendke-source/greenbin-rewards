@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import SimpleMap from '@/components/SimpleMap';
+import LocationSelector from '@/components/LocationSelector';
 
 interface Bin {
   id: string;
@@ -16,13 +18,21 @@ interface Bin {
   longitude: number;
 }
 
+interface UserLocation {
+  latitude: number;
+  longitude: number;
+  address?: string;
+}
+
 const BinLocator = () => {
   const [bins, setBins] = useState<Bin[]>([]);
   const [filteredBins, setFilteredBins] = useState<Bin[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-  const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | null>(null);
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [showLocationSelector, setShowLocationSelector] = useState(false);
+  const [locationConfirmed, setLocationConfirmed] = useState(false);
 
   useEffect(() => {
     fetchBins();
@@ -41,11 +51,13 @@ const BinLocator = () => {
 
       if (error) {
         console.error('Error fetching bins:', error);
+        toast.error('Failed to fetch bins');
       } else {
         setBins(data || []);
       }
     } catch (error) {
       console.error('Error fetching bins:', error);
+      toast.error('Failed to fetch bins');
     } finally {
       setLoading(false);
     }
@@ -65,7 +77,7 @@ const BinLocator = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active':
+      case 'available':
         return 'bg-eco text-white';
       case 'full':
         return 'bg-destructive text-destructive-foreground';
@@ -78,7 +90,7 @@ const BinLocator = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'active':
+      case 'available':
         return '🟢';
       case 'full':
         return '🔴';
@@ -113,6 +125,16 @@ const BinLocator = () => {
     }
   };
 
+  const handleLocationConfirm = (location: { latitude: number; longitude: number; address: string }) => {
+    setUserLocation({ 
+      latitude: location.latitude, 
+      longitude: location.longitude,
+      address: location.address 
+    });
+    setLocationConfirmed(true);
+    toast.success('Location confirmed!');
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -134,26 +156,28 @@ const BinLocator = () => {
       <div>
         <h1 className="text-3xl font-bold text-eco mb-2">Bin Locator</h1>
         <p className="text-muted-foreground text-lg">
-          Find the nearest available bins for your eco-friendly disposal
+          Find the nearest available smart bins for your eco-friendly disposal
         </p>
       </div>
 
-      {/* Search Bar */}
-      <Card className="border-eco-light/30">
-        <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by location or bin ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 border-eco-light/50 focus:border-eco"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Search Bar - Only show after location is confirmed */}
+      {locationConfirmed && (
+        <Card className="border-eco-light/30">
+          <CardContent className="p-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by location or bin ID..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 border-eco-light/50 focus:border-eco"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Interactive Map */}
+      {/* Location Selection / Map Section */}
       <Card className="border-eco-light/30">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-eco">
@@ -165,108 +189,148 @@ const BinLocator = () => {
           </p>
         </CardHeader>
         <CardContent className="p-4">
-          <div className="h-96">
-            <SimpleMap 
-              bins={filteredBins} 
-              userLocation={userLocation}
-              onLocationRequest={handleLocationRequest}
-              locationLoading={locationLoading}
-            />
-          </div>
+          {!locationConfirmed ? (
+            <div className="h-96 flex flex-col items-center justify-center text-center space-y-4">
+              <div className="text-6xl mb-4">📍</div>
+              <h3 className="text-xl font-semibold text-gray-800">Find Nearby Smart Bins</h3>
+              <p className="text-gray-600 max-w-md">
+                Share your location to discover the closest smart bins and check their real-time availability
+              </p>
+              <Button 
+                onClick={() => setShowLocationSelector(true)}
+                className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3"
+                size="lg"
+              >
+                <MapPin className="h-5 w-5 mr-2" />
+                Select Location
+              </Button>
+            </div>
+          ) : (
+            <div className="h-96">
+              <SimpleMap 
+                bins={filteredBins} 
+                userLocation={userLocation}
+                onLocationRequest={handleLocationRequest}
+                locationLoading={locationLoading}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Bins List */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-eco">
-            {userLocation ? 'Nearby Bins' : 'Available Bins'} ({filteredBins.length} found)
-          </h2>
-          <div className="flex gap-2 text-sm">
-            <span>🟢 Available</span>
-            <span>🔴 Full</span>
-            <span>🟡 Maintenance</span>
+      {/* Bins List - Only show after location is confirmed */}
+      {locationConfirmed && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-eco">
+              Nearby Smart Bins ({filteredBins.length} found)
+            </h2>
+            <div className="flex gap-2 text-sm">
+              <span>🟢 Available</span>
+              <span>🔴 Full</span>
+              <span>🟡 Maintenance</span>
+            </div>
           </div>
-        </div>
 
-        {filteredBins.length === 0 ? (
-          <Card className="border-eco-light/30">
-            <CardContent className="p-8 text-center">
-              <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">
-                {searchTerm ? 'No bins found matching your search.' : userLocation ? 'No bins found in your area.' : 'Share your location to see nearby bins.'}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4">
-            {(userLocation 
-              ? filteredBins
-                  .map(bin => ({
-                    ...bin,
-                    distance: Math.sqrt(
-                      Math.pow(bin.latitude - userLocation.latitude, 2) + 
-                      Math.pow(bin.longitude - userLocation.longitude, 2)
-                    ) * 111 // Rough conversion to km
-                  }))
-                  .sort((a, b) => a.distance - b.distance)
-              : filteredBins
-            ).map((bin) => (
-              <Card key={bin.id} className="border-eco-light/30 hover:shadow-eco transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="text-2xl">{getStatusIcon(bin.status)}</span>
-                        <div>
-                          <h3 className="font-semibold text-eco">{bin.bin_id}</h3>
-                          <p className="text-muted-foreground flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {bin.location}
-                          </p>
-                          {userLocation && 'distance' in bin && (
-                            <p className="text-xs text-blue-600">
-                              ~{(bin as any).distance.toFixed(1)} km away
+          {userLocation && userLocation.address && (
+            <Card className="bg-blue-50 border-blue-200">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <div>
+                    <p className="font-medium text-blue-900">Your Location</p>
+                    <p className="text-sm text-blue-700">{userLocation.address}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {filteredBins.length === 0 ? (
+            <Card className="border-eco-light/30">
+              <CardContent className="p-8 text-center">
+                <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">
+                  {searchTerm ? 'No bins found matching your search.' : 'No smart bins found in your area.'}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {(userLocation 
+                ? filteredBins
+                    .map(bin => ({
+                      ...bin,
+                      distance: Math.sqrt(
+                        Math.pow(bin.latitude - userLocation.latitude, 2) + 
+                        Math.pow(bin.longitude - userLocation.longitude, 2)
+                      ) * 111 // Rough conversion to km
+                    }))
+                    .sort((a, b) => a.distance - b.distance)
+                : filteredBins
+              ).map((bin) => (
+                <Card key={bin.id} className="border-eco-light/30 hover:shadow-eco transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="text-2xl">{getStatusIcon(bin.status)}</span>
+                          <div>
+                            <h3 className="font-semibold text-eco">{bin.bin_id}</h3>
+                            <p className="text-muted-foreground flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {bin.location}
                             </p>
+                            {userLocation && 'distance' in bin && (
+                              <p className="text-xs text-blue-600">
+                                ~{(bin as any).distance.toFixed(1)} km away
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge className={getStatusColor(bin.status)}>
+                            {bin.status.charAt(0).toUpperCase() + bin.status.slice(1)}
+                          </Badge>
+                          {bin.status === 'available' && (
+                            <span className="text-sm text-eco flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              Available 24/7
+                            </span>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge className={getStatusColor(bin.status)}>
-                          {bin.status.charAt(0).toUpperCase() + bin.status.slice(1)}
-                        </Badge>
-                        {bin.status === 'active' && (
-                          <span className="text-sm text-eco flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            Available 24/7
-                          </span>
+                      
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openDirections(bin)}
+                          className="border-eco text-eco hover:bg-eco hover:text-white"
+                        >
+                          <Navigation className="h-3 w-3 mr-1" />
+                          Directions
+                        </Button>
+                        {bin.status === 'available' && (
+                          <Badge variant="secondary" className="text-xs text-center">
+                            Ready to use
+                          </Badge>
                         )}
                       </div>
                     </div>
-                    
-                    <div className="flex flex-col gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openDirections(bin)}
-                        className="border-eco text-eco hover:bg-eco hover:text-white"
-                      >
-                        <Navigation className="h-3 w-3 mr-1" />
-                        Directions
-                      </Button>
-                      {bin.status === 'active' && (
-                        <Badge variant="secondary" className="text-xs text-center">
-                          Ready to use
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <LocationSelector 
+        isOpen={showLocationSelector}
+        onClose={() => setShowLocationSelector(false)}
+        onLocationConfirm={handleLocationConfirm}
+      />
     </div>
   );
 };
