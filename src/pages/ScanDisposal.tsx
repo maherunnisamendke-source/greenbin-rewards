@@ -65,7 +65,7 @@ const ScanDisposal = () => {
   };
 
   const persistReward = async (wasteType: string, points: number) => {
-    if (!user) {
+    if (!user?.id) {
       toast({ title: 'Not signed in', description: 'Please log in to earn points.', variant: 'destructive' });
       return;
     }
@@ -80,7 +80,7 @@ const ScanDisposal = () => {
     const { error: insertError } = await supabase
       .from('disposals')
       .insert({
-        user_id: user.id,
+        user_id: String(user.id),
         bin_id: binId,
         waste_type: wasteType,
         points_earned: points
@@ -96,7 +96,7 @@ const ScanDisposal = () => {
     const { data: profile, error: profileErr } = await supabase
       .from('profiles')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', String(user.id))
       .single();
 
     if (profileErr) {
@@ -110,7 +110,7 @@ const ScanDisposal = () => {
         points: (profile?.points || 0) + (points || 0),
         total_disposals: (profile?.total_disposals || 0) + 1,
       })
-      .eq('user_id', user.id);
+      .eq('user_id', String(user.id));
 
     if (updateErr) {
       console.error('Failed to update profile points', updateErr);
