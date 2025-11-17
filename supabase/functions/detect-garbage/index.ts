@@ -50,7 +50,7 @@ serve(async (req: Request): Promise<Response> => {
 
     // Pin to a low-cost/free model to avoid 402 credit errors
     const models = [
-      'google/gemini-1.5-flash'
+      'google/gemini-flash-1.5'
     ];
 
     let response: Response | null = null;
