@@ -48,9 +48,9 @@ serve(async (req: Request): Promise<Response> => {
       req.headers.get('referer') ||
       'http://localhost:5173';
 
-    // Pin to a low-cost/free model to avoid 402 credit errors
+    // Use OpenRouter's Gemini Flash model
     const models = [
-      'google/gemini-flash-1.5'
+      'google/gemini-flash-1.5-8b'
     ];
 
     let response: Response | null = null;
