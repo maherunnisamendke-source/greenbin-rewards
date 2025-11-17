@@ -6,6 +6,10 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+  // Authentication temporarily disabled for testing
+  return <>{children}</>;
+  
+  /* 
   const { user, loading } = useAuth();
   const location = useLocation();
 
@@ -25,6 +29,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   return <>{children}</>;
+  */
 };
 
 export default ProtectedRoute;
