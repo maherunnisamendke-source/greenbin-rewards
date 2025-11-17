@@ -35,12 +35,14 @@ const Dashboard = () => {
   }, [user]);
 
   const fetchUserData = async () => {
+    if (!user?.id) return;
+    
     try {
       // Fetch user profile
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', String(user.id))
         .single();
 
       if (profileData) {
@@ -57,7 +59,7 @@ const Dashboard = () => {
             location
           )
         `)
-        .eq('user_id', user?.id)
+        .eq('user_id', String(user.id))
         .order('created_at', { ascending: false })
         .limit(5);
 
