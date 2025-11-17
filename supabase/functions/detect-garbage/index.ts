@@ -48,9 +48,9 @@ serve(async (req: Request): Promise<Response> => {
       req.headers.get('referer') ||
       'http://localhost:5173';
 
-    // Use OpenRouter's Gemini Flash model
+    // Use OpenRouter's Gemini Flash model (correct model ID)
     const models = [
-      'google/gemini-flash-1.5-8b'
+      'google/gemini-flash-1.5'
     ];
 
     let response: Response | null = null;
