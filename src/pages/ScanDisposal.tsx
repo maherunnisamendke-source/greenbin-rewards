@@ -136,6 +136,11 @@ const ScanDisposal = () => {
 
     if (result.isGarbage && result.pointsEarned > 0) {
       await persistReward(result.wasteType || 'recyclable', result.pointsEarned);
+      
+      // Reload after points are saved to show updated dashboard
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     }
   };
 

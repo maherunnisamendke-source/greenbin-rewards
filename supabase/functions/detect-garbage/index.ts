@@ -55,28 +55,37 @@ serve(async (req: Request): Promise<Response> => {
             content: [
               {
                 type: 'text',
-                text: `Analyze this image and determine if it contains recyclable waste or garbage. 
-                
-                Please respond with a JSON object in this exact format:
-                {
-                  "isGarbage": true/false,
-                  "confidence": 0.0-1.0,
-                  "wasteType": "plastic|paper|metal|organic|glass|electronic|other|none",
-                  "description": "brief description of what you see",
-                  "pointsEarned": 0-50
-                }
-                
-                Rules for point calculation:
-                - Plastic items: 10-15 points based on size/quantity
-                - Paper items: 8-12 points
-                - Metal cans/items: 15-20 points
-                - Glass bottles/jars: 12-18 points
-                - Electronic items: 20-30 points
-                - Organic waste: 5-10 points
-                - Mixed recyclables: bonus points
-                - Non-recyclable items: 0 points
-                
-                Only award points for clearly identifiable recyclable waste. If image is unclear, blurry, or doesn't contain waste, set isGarbage to false and pointsEarned to 0.`
+                text: `You are a waste detection AI for an eco-rewards app. Analyze this image to detect recyclable waste.
+
+CRITICAL: If you detect ANY recyclable waste, you MUST award points. Users are scanning to earn rewards!
+
+Respond with this exact JSON format:
+{
+  "isGarbage": true/false,
+  "confidence": 0.0-1.0,
+  "wasteType": "plastic|paper|metal|organic|glass|electronic|other|none",
+  "description": "brief description of what you see",
+  "pointsEarned": 0-50
+}
+
+POINT CALCULATION RULES (MANDATORY):
+- If isGarbage is TRUE (recyclable detected), pointsEarned MUST be > 0
+- Plastic items (bottles, bags, packaging): 10-15 points
+- Paper/cardboard: 8-12 points
+- Metal cans/items: 15-20 points
+- Glass bottles/jars: 12-18 points
+- Electronics: 20-30 points
+- Organic waste: 5-10 points
+- Multiple items: add bonus points
+
+EXAMPLES:
+✅ Plastic bag detected → isGarbage: true, pointsEarned: 12
+✅ Paper detected → isGarbage: true, pointsEarned: 10
+✅ Metal can detected → isGarbage: true, pointsEarned: 15
+❌ No waste visible → isGarbage: false, pointsEarned: 0
+❌ Blurry/unclear image → isGarbage: false, pointsEarned: 0
+
+Remember: Detected recyclable waste = points awarded!`
               },
               {
                 type: 'image_url',
@@ -155,7 +164,13 @@ serve(async (req: Request): Promise<Response> => {
       pointsEarned: Math.max(0, Math.min(50, Number(analysisResult.pointsEarned) || 0))
     };
 
+    console.log('Raw AI result:', analysisResult);
     console.log('Validated result:', validatedResult);
+    
+    // Safety check: if waste is detected but no points awarded, log warning
+    if (validatedResult.isGarbage && validatedResult.pointsEarned === 0) {
+      console.warn('WARNING: Waste detected but 0 points awarded!', validatedResult);
+    }
 
     return new Response(
       JSON.stringify(validatedResult),
