@@ -14,7 +14,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
+const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
@@ -23,8 +23,8 @@ serve(async (req: Request): Promise<Response> => {
   }
 
   try {
-    if (!OPENROUTER_API_KEY) {
-      throw new Error('OpenRouter API key not found');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('Lovable API key not found');
     }
 
     const { image } = await req.json();
@@ -39,36 +39,17 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log('Analyzing image with OpenRouter AI...');
+    console.log('Analyzing image with Lovable AI...');
 
-    // Determine a valid site URL for OpenRouter referer checking
-    const appUrl =
-      Deno.env.get('APP_URL') ||
-      req.headers.get('origin') ||
-      req.headers.get('referer') ||
-      'http://localhost:5173';
-
-    // Use OpenRouter's Gemini Flash model (correct model ID)
-    const models = [
-      'google/gemini-flash-1.5'
-    ];
-
-    let response: Response | null = null;
-    let lastError: string | undefined;
-
-    for (const model of models) {
-      console.log(`Attempting OpenRouter model: ${model}`);
-      response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': appUrl,
-          'X-Title': 'EcoBin Waste Detection',
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
           {
             role: 'user',
             content: [
@@ -106,34 +87,29 @@ serve(async (req: Request): Promise<Response> => {
             ]
           }
         ],
-        max_tokens: 120,
-        temperature: 0.2
-        })
-      });
+        max_tokens: 300,
+        temperature: 0.3
+      })
+    });
 
-      if (response.ok) break;
-
+    if (!response.ok) {
       const errorText = await response.text();
-      lastError = `status=${response.status} body=${errorText}`;
-      console.error('OpenRouter API error:', model, lastError);
-
-      // Try next model for common client-side issues like missing model (404),
-      // bad request (400), or insufficient credits (402). Break for other statuses.
-      if (![400, 402, 404].includes(response.status)) {
-        break;
+      console.error('Lovable AI error:', response.status, errorText);
+      
+      let errorMessage = 'AI analysis failed';
+      if (response.status === 429) {
+        errorMessage = 'Rate limit exceeded. Please try again in a moment.';
+      } else if (response.status === 402) {
+        errorMessage = 'AI credits exhausted. Please add credits to continue.';
       }
-    }
-
-    if (!response || !response.ok) {
-      const status = response?.status || 500;
-      const bodyText = lastError || 'unknown error';
+      
       return new Response(
         JSON.stringify({
-          error: 'OpenRouter request failed',
-          details: bodyText,
+          error: errorMessage,
+          details: errorText,
         }),
         {
-          status,
+          status: response.status,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
