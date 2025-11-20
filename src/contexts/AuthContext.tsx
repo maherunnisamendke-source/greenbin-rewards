@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { apiService, User } from '@/services/api';
+import { supabase } from '@/integrations/supabase/client';
+import { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
@@ -29,58 +30,58 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const checkAuthStatus = async () => {
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      setLoading(false);
-      return;
-    }
+  useEffect(() => {
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    );
 
-    try {
-      const userData = await apiService.getCurrentUser();
-      setUser(userData);
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      localStorage.removeItem('access_token');
-      setUser(null);
-    } finally {
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
       setLoading(false);
-    }
-  };
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const login = async (email: string, password: string) => {
-    try {
-      await apiService.login({ email, password });
-      const userData = await apiService.getCurrentUser();
-      setUser(userData);
-    } catch (error) {
-      throw error;
-    }
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw error;
   };
 
   const register = async (email: string, password: string, fullName: string) => {
-    try {
-      await apiService.register({ email, password, full_name: fullName });
-      // Auto-login after registration
-      await login(email, password);
-    } catch (error) {
-      throw error;
-    }
+    const redirectUrl = `${window.location.origin}/`;
+    
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: {
+          full_name: fullName,
+        },
+      },
+    });
+    if (error) throw error;
   };
 
   const logout = async () => {
-    try {
-      await apiService.logout();
-    } finally {
-      setUser(null);
-    }
+    await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
   };
-
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
 
   const isAuthenticated = !!user;
 

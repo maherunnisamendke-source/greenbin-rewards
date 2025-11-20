@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, 
@@ -25,17 +25,43 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
- 
+import { supabase } from '@/integrations/supabase/client';
 
+interface Profile {
+  full_name: string | null;
+  email: string | null;
+  points: number | null;
+}
 
 const AppLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+    }
+  }, [user]);
+
+  const fetchProfile = async () => {
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('full_name, email, points')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!error && data) {
+      setProfile(data);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -219,12 +245,12 @@ const AppLayout = () => {
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <div className="font-medium">{user?.full_name || '—'}</div>
+                      <div className="font-medium">{profile?.full_name || user?.email || 'User'}</div>
                       <div className="text-sm text-muted-foreground">{user?.email}</div>
                     </div>
                   </div>
                   <div className="text-sm space-y-1">
-                    <div><span className="text-muted-foreground">Active:</span> {user?.is_active ? 'Yes' : 'No'}</div>
+                    <div><span className="text-muted-foreground">Points:</span> {profile?.points || 0}</div>
                     <div><span className="text-muted-foreground">Joined:</span> {user?.created_at ? new Date(user.created_at).toLocaleString() : '—'}</div>
                   </div>
                   <Button onClick={() => { setProfileOpen(false); navigate('/settings'); }} variant="outline" className="w-full">Manage account</Button>
