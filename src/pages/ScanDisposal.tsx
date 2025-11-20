@@ -70,26 +70,18 @@ const ScanDisposal = () => {
       return;
     }
 
-    // Validate user ID is a proper UUID
-    if (!isValidUuid(user.id)) {
-      console.error('Invalid user ID format:', user.id);
-      toast({ 
-        title: 'Points not saved', 
-        description: 'User ID format error. Please try logging out and back in.', 
-        variant: 'destructive' 
-      });
-      return;
-    }
-
     // First ensure profile exists
     const { data: existingProfile } = await supabase
       .from('profiles')
       .select('*')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (!existingProfile) {
       // Create profile if it doesn't exist
+      const userData = await supabase.auth.getUser();
+      const fullName = userData.data.user?.user_metadata?.full_name;
+      
       const { error: createProfileErr } = await supabase
         .from('profiles')
         .insert({
@@ -97,8 +89,8 @@ const ScanDisposal = () => {
           points: 0,
           total_disposals: 0,
           bins_used: 0,
-          full_name: user.user_metadata?.full_name || 'User',
-          email: user.email
+          full_name: fullName || 'User',
+          email: user.email || null
         });
 
       if (createProfileErr) {
@@ -109,8 +101,8 @@ const ScanDisposal = () => {
     }
 
     const binId = await ensureBin();
-    if (!binId || !isValidUuid(binId)) {
-      console.error('Invalid bin ID:', binId);
+    if (!binId) {
+      console.error('No bin ID available');
       toast({ title: 'Setup error', description: 'No valid bin available.', variant: 'destructive' });
       return;
     }
@@ -140,7 +132,7 @@ const ScanDisposal = () => {
       .from('profiles')
       .select('*')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (profileErr || !profile) {
       console.error('Failed to load profile', profileErr);

@@ -42,8 +42,8 @@ const Dashboard = () => {
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', String(user.id))
-        .single();
+        .eq('user_id', user.id)
+        .maybeSingle();
 
       if (profileData) {
         setProfile(profileData);
@@ -59,7 +59,7 @@ const Dashboard = () => {
             location
           )
         `)
-        .eq('user_id', String(user.id))
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(5);
 
