@@ -70,9 +70,48 @@ const ScanDisposal = () => {
       return;
     }
 
+    // Validate user ID is a proper UUID
+    if (!isValidUuid(user.id)) {
+      console.error('Invalid user ID format:', user.id);
+      toast({ 
+        title: 'Points not saved', 
+        description: 'User ID format error. Please try logging out and back in.', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+
+    // First ensure profile exists
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!existingProfile) {
+      // Create profile if it doesn't exist
+      const { error: createProfileErr } = await supabase
+        .from('profiles')
+        .insert({
+          user_id: user.id,
+          points: 0,
+          total_disposals: 0,
+          bins_used: 0,
+          full_name: user.user_metadata?.full_name || 'User',
+          email: user.email
+        });
+
+      if (createProfileErr) {
+        console.error('Failed to create profile', createProfileErr);
+        toast({ title: 'Setup error', description: 'Could not create user profile.', variant: 'destructive' });
+        return;
+      }
+    }
+
     const binId = await ensureBin();
-    if (!binId) {
-      toast({ title: 'Setup error', description: 'No bin available to record disposal.', variant: 'destructive' });
+    if (!binId || !isValidUuid(binId)) {
+      console.error('Invalid bin ID:', binId);
+      toast({ title: 'Setup error', description: 'No valid bin available.', variant: 'destructive' });
       return;
     }
 
@@ -80,7 +119,7 @@ const ScanDisposal = () => {
     const { error: insertError } = await supabase
       .from('disposals')
       .insert({
-        user_id: String(user.id),
+        user_id: user.id,
         bin_id: binId,
         waste_type: wasteType,
         points_earned: points
@@ -88,7 +127,11 @@ const ScanDisposal = () => {
 
     if (insertError) {
       console.error('Failed to record disposal', insertError);
-      toast({ title: 'Save error', description: 'Could not record your disposal.', variant: 'destructive' });
+      toast({ 
+        title: 'Points not saved', 
+        description: insertError.message || 'Could not record your disposal.', 
+        variant: 'destructive' 
+      });
       return;
     }
 
@@ -96,24 +139,26 @@ const ScanDisposal = () => {
     const { data: profile, error: profileErr } = await supabase
       .from('profiles')
       .select('*')
-      .eq('user_id', String(user.id))
+      .eq('user_id', user.id)
       .single();
 
-    if (profileErr) {
+    if (profileErr || !profile) {
       console.error('Failed to load profile', profileErr);
+      toast({ title: 'Error', description: 'Could not load your profile.', variant: 'destructive' });
       return;
     }
 
     const { error: updateErr } = await supabase
       .from('profiles')
       .update({
-        points: (profile?.points || 0) + (points || 0),
-        total_disposals: (profile?.total_disposals || 0) + 1,
+        points: (profile.points || 0) + points,
+        total_disposals: (profile.total_disposals || 0) + 1,
       })
-      .eq('user_id', String(user.id));
+      .eq('user_id', user.id);
 
     if (updateErr) {
       console.error('Failed to update profile points', updateErr);
+      toast({ title: 'Error', description: 'Could not update points.', variant: 'destructive' });
       return;
     }
 
