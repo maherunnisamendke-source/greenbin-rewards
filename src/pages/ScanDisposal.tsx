@@ -65,10 +65,14 @@ const ScanDisposal = () => {
   };
 
   const persistReward = async (wasteType: string, points: number) => {
+    console.log('Persist reward called. User:', user);
+    
     if (!user?.id) {
       toast({ title: 'Not signed in', description: 'Please log in to earn points.', variant: 'destructive' });
       return;
     }
+    
+    console.log('User ID:', user.id, 'Type:', typeof user.id);
 
     // First ensure profile exists
     const { data: existingProfile } = await supabase
